@@ -1,0 +1,80 @@
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+class ChainHub:
+    def __init__(self):
+        self.api_url = 'https://api.blockchain.info'
+
+    def get_blockchain_stats(self) -> dict:
+        """Fetches blockchain statistics."""
+        url = f"{self.api_url}/stats"
+        response = requests.get(url)
+        return response.json()
+
+    def get_latest_block(self) -> dict:
+        """Fetches the latest block data."""
+        url = f"{self.api_url}/latestblock"
+        response = requests.get(url)
+        return response.json()
+
+    def get_block_data(self, block_height: int) -> dict:
+        """Fetches data for a specific block by height."""
+        url = f"{self.api_url}/block-height/{block_height}?format=json"
+        response = requests.get(url)
+        return response.json()
+
+    def get_historical_data(self, timespan: str = '30days') -> pd.DataFrame:
+        """Fetches historical data for the blockchain."""
+        url = f"{self.api_url}/charts/transactions-per-second?timespan={timespan}&format=json"
+        response = requests.get(url)
+        data = response.json().get('values', [])
+        df = pd.DataFrame(data)
+        df['x'] = pd.to_datetime(df['x'], unit='s')
+        df.set_index('x', inplace=True)
+        df.rename(columns={'y': 'transactions_per_second'}, inplace=True)
+        return df
+
+    def analyze_blockchain_metrics(self) -> dict:
+        """Analyzes key blockchain metrics like market price, hash rate, and number of transactions."""
+        stats = self.get_blockchain_stats()
+        metrics = {
+            'market_price_usd': stats.get('market_price_usd'),
+            'hash_rate': stats.get('hash_rate'),
+            'n_transactions': stats.get('n_tx'),
+            'total_fees_btc': stats.get('total_fees_btc')
+        }
+        return metrics
+
+    def plot_transaction_trends(self, timespan: str = '30days'):
+        """Plots historical transaction trends for the blockchain."""
+        df = self.get_historical_data(timespan)
+        if df.empty:
+            print("No historical data found.")
+            return
+
+        plt.figure(figsize=(12, 6))
+        df['transactions_per_second'].plot()
+        plt.title('Transactions per Second Trend')
+        plt.xlabel('Date')
+        plt.ylabel('Transactions per Second')
+        plt.grid(True)
+        plt.show()
+
+# Example Usage
+if __name__ == "__main__":
+    chain_hub = ChainHub()
+
+    # Fetch and Display Blockchain Stats
+    stats = chain_hub.analyze_blockchain_metrics()
+    print("Blockchain Metrics:")
+    print(stats)
+
+    # Fetch and Display Latest Block Data
+    latest_block = chain_hub.get_latest_block()
+    print("Latest Block Data:")
+    print(latest_block)
+
+    # Plot Historical Transaction Trends
+    chain_hub.plot_transaction_trends(timespan='30days')  # Last 30 days
